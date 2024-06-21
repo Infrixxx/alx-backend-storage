@@ -1,42 +1,32 @@
 #!/usr/bin/env python3
-""" web.py module 
-"""
+""" Redis Module """
 
-
-import requests
-import redis
-from typing import Callable
 from functools import wraps
+import redis
+import requests
+from typing import Callable
+
+redis_ = redis.Redis()
 
 
-client = redis.Redis()
+def count_requests(method: Callable) -> Callable:
+    """ Decortator for counting """
+    @wraps(method)
+    def wrapper(url):  # sourcery skip: use-named-expression
+        """ Wrapper for decorator """
+        redis_.incr(f"count:{url}")
+        cached_html = redis_.get(f"cached:{url}")
+        if cached_html:
+            return cached_html.decode('utf-8')
+        html = method(url)
+        redis_.setex(f"cached:{url}", 10, html)
+        return html
 
-
-def url_access_count(func: Callable) -> Callable:
-    """Tracks how many times a particular URL was accessed and
-    cache the result with an expiration time. """
-    @wraps(func)
-    def wrapper(url):
-        client.incr(f"count:{url}")
-
-        content = client.get(f"result:{url}")
-        if content:
-            return content.decode('utf-8')
-
-        content = func(url)
-        client.set(f'count:{url}', 0)
-        client.setex(f"result:{url}", 10, content)
-
-        return content
     return wrapper
 
 
-@url_access_count
+@count_requests
 def get_page(url: str) -> str:
-    """obtain the HTML content of a particular URL and returns it.
-    """
-
-    response = requests.get(url)
-    html_content = response.text
-
-    return html_content
+    """ Obtain the HTML content of a  URL """
+    req = requests.get(url)
+    return req.text
