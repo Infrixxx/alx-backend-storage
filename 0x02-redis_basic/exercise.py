@@ -76,10 +76,7 @@ class Cache:
         stores data in redis using a random key and data as value
         """
         key = str(uuid4())
-        if (type(data) not in [int, float, bytes, str]):
-            self._redis.set(key, str(data))
-        else:
-            self._redis.set(key, data)
+        self._redis.set(key, data)
         return key
 
     def get(self, key: str, fn: Callable = None):
@@ -103,3 +100,4 @@ class Cache:
         Get value of key from redis, return the value as an int
         """
         return self.get(key, int)
+
